@@ -1,4 +1,6 @@
 # 🧠 AI Second Brain (v0.1)
+![Version](https://img.shields.io/badge/release-v0.1.0-green)
+![Status](https://img.shields.io/badge/status-development-orange)
 
 An experimental AI-powered Second Brain built using FastAPI, Obsidian notes, and LLM APIs.  
 This project aims to create a personal knowledge system that can store, search, and understand notes using AI.
