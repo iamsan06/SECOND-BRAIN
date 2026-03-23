@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Neural Architect | Obsidian Logic</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/standalone/umd/vis-network.min.js"></script>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          "background": "#000000",
+          "surface": "#000000",
+          "on-background": "#FFFFFF",
+          "on-surface": "#FFFFFF",
+          "primary": "#FFFFFF",
+          "on-primary": "#000000",
+          "outline": "#FFFFFF",
+          "outline-variant": "#333333"
+        },
+        fontFamily: {
+          "headline": ["Space Grotesk"],
+          "body": ["JetBrains Mono", "monospace"],
+          "label": ["JetBrains Mono", "monospace"]
+        },
+        borderRadius: {"DEFAULT": "0px", "lg": "0px", "xl": "0px", "full": "0px"},
+      },
+    },
+  }
+</script>
+<style>
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: #000; }
+  ::-webkit-scrollbar-thumb { background: #fff; }
+  .border-1 { border-width: 1px; }
+  input, textarea, button { border-radius: 0 !important; }
+  .grid-pattern {
+    background-color: #000000;
+    background-image:
+      linear-gradient(to right, #333 1px, transparent 1px),
+      linear-gradient(to bottom, #333 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  #graphView canvas { background-color: transparent !important; }
+</style>
+</head>
+<body class="bg-background text-on-background font-body selection:bg-white selection:text-black h-screen flex flex-col overflow-hidden">
+
+<!-- Header -->
+<header class="border-b border-white flex justify-between items-center w-full px-8 h-16 shrink-0 z-20">
+  <div class="flex items-center gap-4">
+    <span class="text-xl font-bold tracking-tighter uppercase font-headline">Neural Architect</span>
+  </div>
+  <nav class="hidden md:flex items-center gap-12">
+    <a class="text-[10px] font-bold uppercase tracking-widest border-b border-white pb-1" href="#">Gallery</a>
+    <a class="text-[10px] font-bold uppercase tracking-widest text-zinc-500 hover:text-white transition-colors" href="#">Connections</a>
+    <a class="text-[10px] font-bold uppercase tracking-widest text-zinc-500 hover:text-white transition-colors" href="#">Archive</a>
+  </nav>
+  <div class="flex items-center gap-6">
+    <div class="flex items-center border border-white px-3 py-1">
+      <span class="material-symbols-outlined text-sm mr-2">search</span>
+      <input class="bg-transparent border-none text-[10px] focus:ring-0 text-white w-32 uppercase" placeholder="Search Map..." type="text"/>
+    </div>
+    <span class="material-symbols-outlined cursor-pointer hover:opacity-70">settings</span>
+    <span class="material-symbols-outlined cursor-pointer hover:opacity-70">account_circle</span>
+  </div>
+</header>
+
+<main class="flex-1 flex overflow-hidden">
+
+  <!-- Left: Graph -->
+  <section class="w-[65%] relative border-r border-white overflow-hidden grid-pattern">
+    <div class="absolute top-4 left-6 z-10">
+      <div class="border border-white bg-black px-3 py-1 flex items-center gap-2">
+        <div class="w-1.5 h-1.5 bg-white animate-pulse"></div>
+        <span class="text-[10px] font-bold tracking-[0.2em] uppercase">System Live</span>
+      </div>
+    </div>
+    <div class="absolute top-4 right-6 z-10 flex gap-px bg-white p-[1px]">
+      <button class="bg-black p-2 hover:bg-white hover:text-black transition-colors" id="zoomInBtn">
+        <span class="material-symbols-outlined text-sm">zoom_in</span>
+      </button>
+      <button class="bg-black p-2 hover:bg-white hover:text-black transition-colors" id="fitBtn">
+        <span class="material-symbols-outlined text-sm">filter_center_focus</span>
+      </button>
+    </div>
+    <div class="w-full h-full cursor-crosshair" id="graphView"></div>
+  </section>
+
+  <!-- Right: Sidebar -->
+  <aside class="w-[35%] flex flex-col border-white bg-black overflow-hidden">
+
+    <!-- Upload -->
+    <div class="p-6 border-b border-white">
+      <h3 class="text-[10px] font-bold uppercase tracking-[0.2em] mb-4">Ingestion Portal</h3>
+      <div class="w-full border-2 border-dashed border-white p-8 flex flex-col items-center justify-center text-center group hover:bg-zinc-900 transition-colors cursor-pointer relative" id="dropZone">
+        <input accept=".md,.txt" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" id="fileInput" multiple type="file"/>
+        <span class="material-symbols-outlined text-3xl mb-4">upload_file</span>
+        <p class="text-[10px] font-bold uppercase tracking-[0.2em] mb-4 font-headline">Drag &amp; Drop Synaptic Data</p>
+        <div class="bg-white text-black px-6 py-2 text-[10px] font-bold uppercase hover:bg-zinc-200 transition-all mb-4">Select Files</div>
+        <p class="text-[8px] text-zinc-500 uppercase tracking-widest">Supported: .md, .txt</p>
+        <p class="text-[9px] mt-2 uppercase tracking-widest hidden" id="uploadStatus"></p>
+      </div>
+    </div>
+
+    <!-- Notes List -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+      <div class="px-6 py-4 border-b border-white flex justify-between items-center bg-black sticky top-0 z-10">
+        <h3 class="text-[10px] font-bold uppercase tracking-[0.2em]">Repository</h3>
+        <span class="text-[10px] text-zinc-500" id="nodeCount">0 NODES</span>
+      </div>
+      <div class="flex-1 overflow-y-auto p-6 space-y-4" id="notesContainer"></div>
+    </div>
+
+    <!-- Chat -->
+    <div class="h-64 border-t border-white flex flex-col bg-black">
+      <div class="flex-1 overflow-y-auto p-4 flex flex-col gap-3 max-h-[140px]" id="chatHistory">
+        <div class="flex items-start gap-2">
+          <div class="bg-white text-black px-3 py-2 border border-white max-w-[85%]">
+            <p class="text-[10px] font-bold leading-relaxed uppercase">Neural Architect ready. Index complete. How shall we proceed?</p>
+          </div>
+        </div>
+      </div>
+      <div class="px-4 py-2 border-t border-white flex justify-between items-center bg-black">
+        <div class="flex items-center gap-2">
+          <div class="w-1.5 h-1.5 bg-[#00FF00] animate-pulse shadow-[0_0_5px_#00FF00]"></div>
+          <span class="text-[9px] font-bold tracking-[0.2em] uppercase text-white">AI CORE ONLINE</span>
+        </div>
+        <span class="text-[9px] text-zinc-500 uppercase font-bold tracking-widest">Latency: 12ms</span>
+      </div>
+      <div class="p-4 border-t border-white">
+        <div class="flex border border-white">
+          <input class="flex-1 bg-black px-4 py-3 text-[10px] focus:ring-0 outline-none text-white placeholder-zinc-600 uppercase" id="chatInput" placeholder="Enter inquiry..." type="text"/>
+          <button class="bg-white text-black px-6 text-[10px] font-bold uppercase hover:bg-zinc-200 transition-all border-l border-white" id="sendChatBtn">Send</button>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+</main>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    const API = "http://127.0.0.1:8000";
+
+    const container      = document.getElementById('graphView');
+    const notesContainer = document.getElementById('notesContainer');
+    const fileInput      = document.getElementById('fileInput');
+    const dropZone       = document.getElementById('dropZone');
+    const chatInput      = document.getElementById('chatInput');
+    const sendChatBtn    = document.getElementById('sendChatBtn');
+    const chatHistory    = document.getElementById('chatHistory');
+    const nodeCount      = document.getElementById('nodeCount');
+    const uploadStatus   = document.getElementById('uploadStatus');
+    const zoomInBtn      = document.getElementById('zoomInBtn');
+    const fitBtn         = document.getElementById('fitBtn');
+
+    let network = null;
+
+    // ---------------- GRAPH ----------------
+
+    async function loadGraph() {
+        const res  = await fetch(API + "/graph");
+        const data = await res.json();
+
+        // ── NODES: dot shape, white, label floats above ──
+        const nodes = new vis.DataSet(
+            data.nodes.map(n => ({
+    id: n.id,
+    label: n.label.replace(/^#+\s*/, '').substring(0, 24),
+    shape: "dot",
+    size: 9,
+    color: {
+        background: "#ffffff",
+        border: "#ffffff",
+        highlight: { background: "#ffffff", border: "#ffffff" },
+        hover:     { background: "#cccccc", border: "#cccccc" }
+    },
+    font: {
+        color: "#ffffff",
+        face: "JetBrains Mono",
+        size: 10,
+        vadjust: 18,        // positive = label goes BELOW the dot
+        strokeWidth: 3,     // dark outline behind text so it's readable on grid
+        strokeColor: "#000000",
+    },
+    borderWidth: 4,
+    borderWidthSelected: 6,
+    borderDashes: false,
+}))
+        );
+
+        // ── EDGES: thin, dark, dynamic curve ──
+        const edges = new vis.DataSet(
+    data.edges.map(e => ({
+        from: e.from,
+        to: e.to,
+        color: { color: "#ffffff", highlight: "#ffffff", hover: "#bbbbbb" },
+        width: 1.5,
+        selectionWidth: 2,
+        smooth: { enabled: true, type: "dynamic" }
+    }))
+);
+
+        // ── OPTIONS: forceAtlas2Based for organic spread ──
+        const options = {
+            physics: {
+                enabled: true,
+                forceAtlas2Based: {
+                    gravitationalConstant: -45,
+                    centralGravity: 0.004,
+                    springLength: 150,
+                    springConstant: 0.05,
+                    damping: 0.45,
+                    avoidOverlap: 1,
+                },
+                solver: "forceAtlas2Based",
+                stabilization: { iterations: 300, fit: true }
+            },
+            layout: { randomSeed: 13 },
+            interaction: {
+                hover: true,
+                zoomView: true,
+                dragView: true,
+                selectable: true,
+                selectConnectedEdges: true,
+                hideEdgesOnDrag: true,
+                tooltipDelay: 9999,
+            }
+        };
+
+        if (network) network.destroy();
+        network = new vis.Network(container, { nodes, edges }, options);
+    }
+
+    zoomInBtn.addEventListener("click", () => {
+        if (network) network.moveTo({ scale: network.getScale() * 1.3, animation: { duration: 200 } });
+    });
+    fitBtn.addEventListener("click", () => {
+        if (network) network.fit({ animation: { duration: 300 } });
+    });
+
+
+    // ---------------- NOTES ----------------
+
+    async function loadNotes() {
+        const res   = await fetch(API + "/notes");
+        const notes = await res.json();
+
+        notesContainer.innerHTML = "";
+        nodeCount.textContent = `${notes.length} NODES`;
+
+        notes.forEach(n => {
+            const div = document.createElement('div');
+            div.className = "p-6 bg-white text-black border border-white hover:bg-zinc-100 transition-all cursor-pointer flex flex-col";
+            div.innerHTML = `
+                <div class="flex justify-between items-start mb-4">
+                    <span class="text-[9px] font-bold uppercase opacity-60">NODE</span>
+                </div>
+                <p class="text-sm leading-relaxed mb-6 font-bold">${n.text.substring(0, 150)}...</p>
+                <div class="flex flex-wrap gap-2 mt-auto">
+                    ${n.keywords.map(k =>
+                        `<span class="border border-black px-2 py-0.5 text-[8px] uppercase font-bold">#${k}</span>`
+                    ).join("")}
+                </div>
+            `;
+            notesContainer.prepend(div);
+        });
+    }
+
+
+    // ---------------- UPLOAD ----------------
+
+    async function uploadFile(file) {
+        const form = new FormData();
+        form.append("file", file);
+
+        uploadStatus.textContent = `Uploading ${file.name}...`;
+        uploadStatus.classList.remove("hidden", "text-red-400", "text-green-400");
+        uploadStatus.classList.add("text-zinc-400");
+
+        try {
+            const res = await fetch(API + "/upload_md", { method: "POST", body: form });
+            if (!res.ok) throw new Error("Upload failed");
+
+            uploadStatus.textContent = `✓ ${file.name} ingested`;
+            uploadStatus.classList.add("text-green-400");
+
+            await loadNotes();
+            await loadGraph();
+
+        } catch (err) {
+            uploadStatus.textContent = `✗ Failed: ${file.name}`;
+            uploadStatus.classList.add("text-red-400");
+        }
+
+        setTimeout(() => uploadStatus.classList.add("hidden"), 3000);
+    }
+
+    const handleFiles = (files) => {
+        if (!files.length) return;
+        Array.from(files).forEach(file => uploadFile(file));
+    };
+
+    fileInput.addEventListener("change", e => handleFiles(e.target.files));
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
+        dropZone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); });
+    });
+
+    dropZone.addEventListener("drop", e => handleFiles(e.dataTransfer.files));
+
+
+    // ---------------- CHAT ----------------
+
+    function appendMessage(text, isUser = false) {
+        const msg = document.createElement('div');
+        msg.className = `flex items-start gap-2 ${isUser ? 'flex-row-reverse' : ''}`;
+        msg.innerHTML = `
+            <div class="${isUser
+                ? 'bg-black text-white border border-white'
+                : 'bg-white text-black'} px-3 py-2 max-w-[85%]">
+                <p class="text-[10px] font-bold leading-relaxed uppercase">${text}</p>
+            </div>
+        `;
+        chatHistory.appendChild(msg);
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+
+    async function handleChat() {
+        const text = chatInput.value.trim();
+        if (!text) return;
+
+        appendMessage(text, true);
+        chatInput.value = "";
+
+        try {
+            const res  = await fetch(API + "/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ question: text })
+            });
+            const data = await res.json();
+            appendMessage(data.answer);
+        } catch (err) {
+            appendMessage("Error: Could not reach AI core.");
+        }
+    }
+
+    sendChatBtn.addEventListener("click", handleChat);
+    chatInput.addEventListener("keypress", e => { if (e.key === "Enter") handleChat(); });
+
+
+    // ---------------- INIT ----------------
+
+    loadNotes();
+    loadGraph();
+
+});
+</script>
+</body>
+</html>
